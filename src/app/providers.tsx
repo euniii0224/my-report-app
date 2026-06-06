@@ -1,14 +1,21 @@
 'use client'
 
 import { WagmiProvider, createConfig, http } from 'wagmi'
-import { sepolia } from 'wagmi/chains' // sepolia → hardhat 으로 변경
+import { sepolia } from 'wagmi/chains'
 import { metaMask } from 'wagmi/connectors'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 const config = createConfig({
-  chains: [sepolia], // sepolia → hardhat 으로 변경
-  connectors: [metaMask()],
-  transports: { [sepolia.id]: http() }, // 로컬 주소 명시
+  chains: [sepolia],
+  connectors: [
+    metaMask({
+      dappMetadata: {
+        name: '블록체인 익명 신고 시스템',
+        url: 'https://my-report-app-beta.vercel.app',
+      },
+    }),
+  ],
+  transports: { [sepolia.id]: http() },
 })
 
 const queryClient = new QueryClient()
