@@ -631,7 +631,7 @@ export default function AdminPage() {
                                         marginBottom: '4px',
                                       }}
                                     >
-                                      대상
+                                      제목
                                     </div>
                                     <div
                                       style={{

@@ -33,7 +33,7 @@ export default function ReportForm({
   const validate = () => {
     const e: Partial<ReportFormData> = {}
     if (!form.category) e.category = '카테고리를 선택해주세요'
-    if (!form.target.trim()) e.target = '신고 대상을 입력해주세요'
+    if (!form.target.trim()) e.target = '제목을 입력해주세요'
     if (!form.content.trim()) e.content = '제보 내용을 입력해주세요'
     else if (form.content.trim().length < 10)
       e.content = '최소 10자 이상 입력해주세요'

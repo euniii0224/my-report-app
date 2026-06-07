@@ -1,12 +1,10 @@
 'use client'
 
-// 공통 레이아웃 컴포넌트
-// 상단 헤더 + 왼쪽 사이드바 + 콘텐츠 구조
-
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '../../hooks/useAuth'
+import { useDonate, useTotalDonated } from '../../hooks/useDonate'
 
 const MENUS = [
   { href: '/', label: '🏠 홈', adminOnly: false },
@@ -18,8 +16,11 @@ const MENUS = [
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false)
+  const [donateAmount, setDonateAmount] = useState('0.001')
   const pathname = usePathname()
   const { address, isConnected, isAdmin, connect, disconnect } = useAuth()
+  const { donate, isPending, isConfirming, isSuccess } = useDonate()
+  const { total } = useTotalDonated()
 
   useEffect(() => {
     setMounted(true)
@@ -73,7 +74,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               {address?.slice(0, 6)}...{address?.slice(-4)}
               {isAdmin && ' (관리자)'}
             </div>
-
             <button
               onClick={() => disconnect()}
               style={{
@@ -124,9 +124,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             flexShrink: 0,
           }}
         >
+          {/* 메뉴 */}
           {filtered.map((menu) => {
             const isActive = pathname === menu.href
-
             return (
               <Link
                 key={menu.href}
@@ -148,6 +148,103 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               </Link>
             )
           })}
+
+          {/* 후원 섹션 */}
+          <div
+            style={{
+              marginTop: '450px',
+              paddingTop: '20px',
+              borderTop: '1px solid #E2E8F0',
+            }}
+          >
+            <div
+              style={{
+                fontSize: '12px',
+                color: '#94A3B8',
+                marginBottom: '4px',
+                textAlign: 'center',
+              }}
+            >
+              💜 관리자 후원
+            </div>
+            <div
+              style={{
+                fontSize: '11px',
+                color: '#7C3AED',
+                textAlign: 'center',
+                marginBottom: '8px',
+              }}
+            >
+              총 후원금액: {total} ETH
+            </div>
+            <input
+              type="number"
+              value={donateAmount}
+              onChange={(e) => setDonateAmount(e.target.value)}
+              step="0.001"
+              min="0.001"
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                padding: '6px 10px',
+                border: '1px solid #E2E8F0',
+                borderRadius: '6px',
+                fontSize: '12px',
+                marginBottom: '4px',
+                textAlign: 'center',
+                outline: 'none',
+              }}
+            />
+            <div
+              style={{
+                fontSize: '11px',
+                color: '#94A3B8',
+                textAlign: 'center',
+                marginBottom: '8px',
+              }}
+            >
+              ETH
+            </div>
+            <button
+              onClick={() => donate(donateAmount)}
+              disabled={!mounted || !isConnected || isPending || isConfirming}
+              style={{
+                width: '100%',
+                padding: '8px',
+                background:
+                  !mounted || !isConnected || isPending || isConfirming
+                    ? '#A78BFA'
+                    : '#7C3AED',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor:
+                  !mounted || !isConnected || isPending || isConfirming
+                    ? 'not-allowed'
+                    : 'pointer',
+              }}
+            >
+              {isPending
+                ? '승인 대기...'
+                : isConfirming
+                ? '처리 중...'
+                : '후원하기'}
+            </button>
+            {isSuccess && (
+              <p
+                style={{
+                  fontSize: '11px',
+                  color: '#059669',
+                  textAlign: 'center',
+                  marginTop: '6px',
+                }}
+              >
+                ✅ 후원 완료!
+              </p>
+            )}
+          </div>
         </div>
 
         {/* 콘텐츠 */}

@@ -32,6 +32,7 @@ contract Report {
     address public admin;
     uint256 private reportCount;
     uint256 private commentCount;
+    uint256 public totalDonated; // 총 후원금액
 
     mapping(uint256 => ReportData) private reports;
     mapping(bytes32 => uint256) private trackingToId;
@@ -42,6 +43,7 @@ contract Report {
     event CommentAdded(uint256 indexed reportId, uint256 commentId, address author);
     event CommentHidden(uint256 indexed reportId, uint256 commentIndex);
     event CommentUnhidden(uint256 indexed reportId, uint256 commentIndex);
+    event Donated(address indexed donor, uint256 amount);
 
     modifier onlyAdmin() {
         require(msg.sender == admin, "Only admin can call this");
@@ -142,6 +144,14 @@ contract Report {
 
     function getReportCount() public view returns (uint256) {
         return reportCount;
+    }
+
+    // 관리자 후원
+    function donate() public payable {
+        require(msg.value > 0, "Donation amount must be greater than 0");
+        totalDonated += msg.value; // 누적
+        payable(admin).transfer(msg.value);
+        emit Donated(msg.sender, msg.value);
     }
 
     // 댓글 등록 (누구나)

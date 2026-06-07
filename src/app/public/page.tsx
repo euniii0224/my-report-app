@@ -464,7 +464,7 @@ export default function PublicPage() {
                                   marginBottom: '4px',
                                 }}
                               >
-                                대상
+                                제목
                               </div>
                               <div
                                 style={{ fontSize: '14px', color: '#1E293B' }}
