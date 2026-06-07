@@ -29,10 +29,12 @@ contract Report {
         bool hidden;
     }
 
-    address public admin;
+    address public owner;
+    mapping(address => bool) public admins;
+    address[] private adminList; // 관리자 목록 배열
     uint256 private reportCount;
     uint256 private commentCount;
-    uint256 public totalDonated; // 총 후원금액
+    uint256 public totalDonated;
 
     mapping(uint256 => ReportData) private reports;
     mapping(bytes32 => uint256) private trackingToId;
@@ -44,9 +46,16 @@ contract Report {
     event CommentHidden(uint256 indexed reportId, uint256 commentIndex);
     event CommentUnhidden(uint256 indexed reportId, uint256 commentIndex);
     event Donated(address indexed donor, uint256 amount);
+    event AdminAdded(address indexed admin);
+    event AdminRemoved(address indexed admin);
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only owner can call this");
+        _;
+    }
 
     modifier onlyAdmin() {
-        require(msg.sender == admin, "Only admin can call this");
+        require(admins[msg.sender], "Only admin can call this");
         _;
     }
 
@@ -56,7 +65,44 @@ contract Report {
     }
 
     constructor() {
-        admin = msg.sender;
+        owner = msg.sender;
+        admins[msg.sender] = true;
+        adminList.push(msg.sender);
+    }
+
+    // 관리자 추가 (owner만)
+    function addAdmin(address _admin) public onlyOwner {
+        require(_admin != address(0), "Invalid address");
+        require(!admins[_admin], "Already an admin");
+        admins[_admin] = true;
+        adminList.push(_admin);
+        emit AdminAdded(_admin);
+    }
+
+    // 관리자 삭제 (owner만)
+    function removeAdmin(address _admin) public onlyOwner {
+        require(_admin != owner, "Cannot remove owner");
+        require(admins[_admin], "Not an admin");
+        admins[_admin] = false;
+        // 배열에서 제거
+        for (uint256 i = 0; i < adminList.length; i++) {
+            if (adminList[i] == _admin) {
+                adminList[i] = adminList[adminList.length - 1];
+                adminList.pop();
+                break;
+            }
+        }
+        emit AdminRemoved(_admin);
+    }
+
+    // 관리자 여부 확인
+    function isAdmin(address _addr) public view returns (bool) {
+        return admins[_addr];
+    }
+
+    // 관리자 목록 조회 (owner만)
+    function getAdminList() public view onlyOwner returns (address[] memory) {
+        return adminList;
     }
 
     function submitReport(
@@ -149,8 +195,8 @@ contract Report {
     // 관리자 후원
     function donate() public payable {
         require(msg.value > 0, "Donation amount must be greater than 0");
-        totalDonated += msg.value; // 누적
-        payable(admin).transfer(msg.value);
+        totalDonated += msg.value;
+        payable(owner).transfer(msg.value);
         emit Donated(msg.sender, msg.value);
     }
 

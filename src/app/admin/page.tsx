@@ -12,8 +12,17 @@ import {
   useUnhideComment,
   useUpdateStatus,
 } from '../../../hooks/useReport'
-import { useAuth } from '../../../hooks/useAuth'
+import {
+  useAddAdmin,
+  useAdminList,
+  useAuth,
+  useRemoveAdmin,
+} from '../../../hooks/useAuth'
+import ReportABI from '../../../abi/Report.json'
+
 import { decryptData } from '../../../utils/crypto'
+
+import { useReadContract } from 'wagmi'
 
 interface ReportDetail {
   title?: string
@@ -180,6 +189,193 @@ function AdminCommentSection({ reportId }: { reportId: bigint }) {
   )
 }
 
+// 관리자 관리 컴포넌트
+function AdminManagement({
+  ownerAddress,
+}: {
+  ownerAddress: string | undefined
+}) {
+  const { address } = useAuth()
+  const { adminList, isLoading, refetch } = useAdminList()
+  const {
+    addAdmin,
+    isPending: isAddPending,
+    isSuccess: isAddSuccess,
+  } = useAddAdmin()
+  const {
+    removeAdmin,
+    isPending: isRemovePending,
+    isSuccess: isRemoveSuccess,
+  } = useRemoveAdmin()
+  const [newAdminAddress, setNewAdminAddress] = useState('')
+
+  useEffect(() => {
+    if (isAddSuccess || isRemoveSuccess) {
+      setNewAdminAddress('')
+      setTimeout(() => refetch(), 2000)
+    }
+  }, [isAddSuccess, isRemoveSuccess])
+
+  const isOwner = address?.toLowerCase() === ownerAddress?.toLowerCase()
+
+  if (!isOwner) return null
+
+  return (
+    <div
+      style={{
+        background: '#fff',
+        border: '1px solid #E2E8F0',
+        borderRadius: '10px',
+        padding: '20px',
+        marginBottom: '24px',
+      }}
+    >
+      <div
+        style={{
+          fontSize: '14px',
+          fontWeight: 600,
+          color: '#1E293B',
+          marginBottom: '16px',
+        }}
+      >
+        👥 관리자 관리
+      </div>
+
+      {/* 관리자 추가 */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+        <input
+          type="text"
+          placeholder="0x 지갑 주소 입력"
+          value={newAdminAddress}
+          onChange={(e) => setNewAdminAddress(e.target.value)}
+          style={{
+            flex: 1,
+            padding: '8px 12px',
+            border: '1px solid #E2E8F0',
+            borderRadius: '8px',
+            fontSize: '13px',
+            fontFamily: 'monospace',
+            outline: 'none',
+          }}
+        />
+        <button
+          onClick={() => addAdmin(newAdminAddress)}
+          disabled={isAddPending || !newAdminAddress.trim()}
+          style={{
+            padding: '8px 16px',
+            background:
+              isAddPending || !newAdminAddress.trim() ? '#A78BFA' : '#7C3AED',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '13px',
+            fontWeight: 600,
+            cursor:
+              isAddPending || !newAdminAddress.trim()
+                ? 'not-allowed'
+                : 'pointer',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {isAddPending ? '처리 중...' : '관리자 추가'}
+        </button>
+      </div>
+
+      {isAddSuccess && (
+        <p style={{ fontSize: '12px', color: '#059669', marginBottom: '8px' }}>
+          ✅ 관리자가 추가되었습니다!
+        </p>
+      )}
+      {isRemoveSuccess && (
+        <p style={{ fontSize: '12px', color: '#DC2626', marginBottom: '8px' }}>
+          ✅ 관리자가 삭제되었습니다!
+        </p>
+      )}
+
+      {/* 관리자 목록 */}
+      <div
+        style={{
+          fontSize: '13px',
+          fontWeight: 500,
+          color: '#475569',
+          marginBottom: '8px',
+        }}
+      >
+        현재 관리자 목록
+      </div>
+      {isLoading ? (
+        <div style={{ fontSize: '13px', color: '#94A3B8' }}>불러오는 중...</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          {adminList.map((admin, i) => (
+            <div
+              key={i}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '8px 12px',
+                background: '#F8FAFC',
+                borderRadius: '8px',
+                border: '1px solid #E2E8F0',
+              }}
+            >
+              <span
+                style={{
+                  fontSize: '12px',
+                  fontFamily: 'monospace',
+                  color: '#334155',
+                }}
+              >
+                {admin}
+                {admin.toLowerCase() === address?.toLowerCase() && (
+                  <span
+                    style={{
+                      fontSize: '10px',
+                      color: '#7C3AED',
+                      marginLeft: '8px',
+                    }}
+                  >
+                    (나)
+                  </span>
+                )}
+                {admin.toLowerCase() === ownerAddress?.toLowerCase() && (
+                  <span
+                    style={{
+                      fontSize: '10px',
+                      color: '#059669',
+                      marginLeft: '8px',
+                    }}
+                  >
+                    (owner)
+                  </span>
+                )}
+              </span>
+              {admin.toLowerCase() !== ownerAddress?.toLowerCase() && (
+                <button
+                  onClick={() => removeAdmin(admin)}
+                  disabled={isRemovePending}
+                  style={{
+                    padding: '3px 10px',
+                    background: '#FEF2F2',
+                    color: '#DC2626',
+                    border: '1px solid #FCA5A5',
+                    borderRadius: '6px',
+                    fontSize: '11px',
+                    cursor: isRemovePending ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  삭제
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function AdminPage() {
   const [mounted, setMounted] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -187,14 +383,27 @@ export default function AdminPage() {
     Record<string, ReportDetail | null>
   >({})
   const [loadingId, setLoadingId] = useState<string | null>(null)
+  const [ownerAddress, setOwnerAddress] = useState<string | undefined>(
+    undefined,
+  )
 
-  const { isConnected, isAdmin, connect } = useAuth()
+  const { isConnected, isAdmin, connect, address } = useAuth()
   const { reports, isLoading, error, refetch } = useAllReports()
   const { updateStatus, isPending, isConfirming, isSuccess } = useUpdateStatus()
+
+  // owner 주소 가져오기
+  const { data: ownerData } = useReadContract({
+    address: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`,
+    abi: ReportABI.abi,
+    functionName: 'owner',
+  })
 
   useEffect(() => {
     setMounted(true)
   }, [])
+  useEffect(() => {
+    if (ownerData) setOwnerAddress(ownerData as string)
+  }, [ownerData])
 
   if (!mounted) return null
 
@@ -335,6 +544,9 @@ export default function AdminPage() {
           ✅ 상태 변경 완료!
         </div>
       )}
+
+      {/* 관리자 관리 섹션 - owner만 보임 */}
+      <AdminManagement ownerAddress={ownerAddress} />
 
       {/* 통계 카드 */}
       <div
@@ -631,7 +843,7 @@ export default function AdminPage() {
                                         marginBottom: '4px',
                                       }}
                                     >
-                                      제목
+                                      대상
                                     </div>
                                     <div
                                       style={{
@@ -666,7 +878,6 @@ export default function AdminPage() {
                                     </div>
                                   </div>
                                 )}
-                                {/* 댓글 관리 섹션 */}
                                 <AdminCommentSection reportId={report.id} />
                               </div>
                             ) : null}
