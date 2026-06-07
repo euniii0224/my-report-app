@@ -51,10 +51,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       >
         <div>
           <div style={{ fontSize: '18px', fontWeight: 700, color: '#1E293B' }}>
-            블록체인 익명 신고 시스템
+            블록체인 익명 커뮤니티
           </div>
           <div style={{ fontSize: '12px', color: '#94A3B8', marginTop: '2px' }}>
-            신원 보호와 투명성을 보장하는 공익 제보 플랫폼
+            신원 보호와 투명성을 보장하는 익명 커뮤니티
           </div>
         </div>
 

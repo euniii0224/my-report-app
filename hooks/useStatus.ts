@@ -24,7 +24,7 @@ export function useStatus(trackingCode: `0x${string}` | undefined) {
   return {
     id: reportData?.[0],
     category: reportData?.[1],
-    status: reportData?.[2], // 0:접수 1:검토중 2:처리완료 3:반려
+    status: reportData?.[2], // 0:접수 1:검토중 2:처리완료 3:비공개
     timestamp: reportData?.[3],
     isLoading,
     isError,

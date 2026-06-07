@@ -10,7 +10,7 @@ const config = createConfig({
   connectors: [
     metaMask({
       dappMetadata: {
-        name: '블록체인 익명 신고 시스템',
+        name: '블록체인 익명 커뮤니티',
         url: 'https://my-report-app-beta.vercel.app',
       },
     }),

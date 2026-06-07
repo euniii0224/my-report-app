@@ -10,7 +10,7 @@ const STATUS_MAP: Record<number, string> = {
   0: '접수',
   1: '검토중',
   2: '처리완료',
-  3: '반려',
+  3: '비공개',
 }
 
 type SearchState = 'idle' | 'loading' | 'found' | 'notfound'

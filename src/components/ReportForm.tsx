@@ -17,7 +17,7 @@ interface ReportFormProps {
   isSubmitting?: boolean
 }
 
-const CATEGORIES = ['부패', '갑질', '횡령', '기타'] as const
+const CATEGORIES = ['학업/수업', '학교생활', '고백/연애', '자유/기타'] as const
 
 export default function ReportForm({
   onSubmit,
@@ -111,11 +111,10 @@ export default function ReportForm({
             marginBottom: '6px',
           }}
         >
-          신고 대상 <span style={{ color: '#EF4444' }}>*</span>
+          제목 <span style={{ color: '#EF4444' }}>*</span>
         </label>
         <input
           type="text"
-          placeholder="예: ○○구청, △△기업"
           value={form.target}
           onChange={(e) => {
             setForm((p) => ({ ...p, target: e.target.value }))

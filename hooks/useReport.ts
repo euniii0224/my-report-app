@@ -1,10 +1,3 @@
-// 제보 등록 트랜잭션을 호출하는 훅
-// 3번 팀원(IPFS)이 넘겨준 ipfsHash와 카테고리를 받아서 컨트랙트의 submitReport() 호출
-// 트랜잭션 성공 시 조회코드(trackingCode) 반환
-// useAllReports: 관리자용 전체 제보 목록 조회
-// usePublicReports: 공개 제보 목록 조회
-// useUpdateStatus: 관리자용 상태 변경
-
 import {
   useWriteContract,
   useWaitForTransactionReceipt,
@@ -17,7 +10,6 @@ import ReportABI from '../abi/Report.json'
 const CONTRACT_ADDRESS = process.env
   .NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`
 
-// 상태값 매핑
 export const STATUS_MAP: Record<number, string> = {
   0: '접수',
   1: '검토중',
@@ -25,7 +17,6 @@ export const STATUS_MAP: Record<number, string> = {
   3: '반려',
 }
 
-// 제보 데이터 타입
 export interface ReportData {
   id: bigint
   reporter: string
@@ -34,6 +25,15 @@ export interface ReportData {
   status: number
   timestamp: bigint
   trackingCode: string
+}
+
+export interface CommentData {
+  id: bigint
+  reportId: bigint
+  author: string
+  content: string
+  timestamp: bigint
+  hidden: boolean
 }
 
 // ─────────────────────────────────────────
@@ -111,7 +111,6 @@ export function useAllReports() {
   })
 
   const reports = (data as ReportData[] | undefined) ?? []
-
   return { reports, isLoading, error, refetch }
 }
 
@@ -126,7 +125,6 @@ export function usePublicReports() {
   })
 
   const reports = (data as ReportData[] | undefined) ?? []
-
   return { reports, isLoading, error }
 }
 
@@ -156,4 +154,123 @@ export function useUpdateStatus() {
   }
 
   return { updateStatus, isPending, isConfirming, isSuccess, isError, error }
+}
+
+// ─────────────────────────────────────────
+// 댓글 조회 훅 (hidden 제외)
+// ─────────────────────────────────────────
+export function useComments(reportId: bigint | undefined) {
+  const { data, isLoading, error, refetch } = useReadContract({
+    address: CONTRACT_ADDRESS,
+    abi: ReportABI.abi,
+    functionName: 'getComments',
+    args: reportId ? [reportId] : undefined,
+    query: { enabled: !!reportId },
+  })
+
+  const comments = (data as CommentData[] | undefined) ?? []
+  return { comments, isLoading, error, refetch }
+}
+
+// ─────────────────────────────────────────
+// 관리자용 전체 댓글 조회 훅 (hidden 포함)
+// ─────────────────────────────────────────
+export function useAllComments(reportId: bigint | undefined) {
+  const { address } = useAccount()
+
+  const { data, isLoading, error, refetch } = useReadContract({
+    address: CONTRACT_ADDRESS,
+    abi: ReportABI.abi,
+    functionName: 'getAllComments',
+    args: reportId ? [reportId] : undefined,
+    account: address,
+    query: { enabled: !!reportId },
+  })
+
+  const comments = (data as CommentData[] | undefined) ?? []
+  return { comments, isLoading, error, refetch }
+}
+
+// ─────────────────────────────────────────
+// 댓글 등록 훅
+// ─────────────────────────────────────────
+export function useAddComment() {
+  const {
+    writeContract,
+    data: txHash,
+    isPending,
+    isError,
+    error,
+  } = useWriteContract()
+
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+    hash: txHash,
+  })
+
+  const addComment = (reportId: bigint, content: string) => {
+    writeContract({
+      address: CONTRACT_ADDRESS,
+      abi: ReportABI.abi,
+      functionName: 'addComment',
+      args: [reportId, content],
+    })
+  }
+
+  return { addComment, isPending, isConfirming, isSuccess, isError, error }
+}
+
+// ─────────────────────────────────────────
+// 댓글 숨김 처리 훅 (관리자만)
+// ─────────────────────────────────────────
+export function useHideComment() {
+  const {
+    writeContract,
+    data: txHash,
+    isPending,
+    isError,
+    error,
+  } = useWriteContract()
+
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+    hash: txHash,
+  })
+
+  const hideComment = (reportId: bigint, commentIndex: number) => {
+    writeContract({
+      address: CONTRACT_ADDRESS,
+      abi: ReportABI.abi,
+      functionName: 'hideComment',
+      args: [reportId, BigInt(commentIndex)],
+    })
+  }
+
+  return { hideComment, isPending, isConfirming, isSuccess, isError, error }
+}
+
+// ─────────────────────────────────────────
+// 댓글 숨김 해제 훅 (관리자만)
+// ─────────────────────────────────────────
+export function useUnhideComment() {
+  const {
+    writeContract,
+    data: txHash,
+    isPending,
+    isError,
+    error,
+  } = useWriteContract()
+
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+    hash: txHash,
+  })
+
+  const unhideComment = (reportId: bigint, commentIndex: number) => {
+    writeContract({
+      address: CONTRACT_ADDRESS,
+      abi: ReportABI.abi,
+      functionName: 'unhideComment',
+      args: [reportId, BigInt(commentIndex)],
+    })
+  }
+
+  return { unhideComment, isPending, isConfirming, isSuccess, isError, error }
 }

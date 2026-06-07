@@ -1,16 +1,18 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-
 import axios from 'axios'
-
 import StatusBadge from '@/components/StatusBadge'
-import { useAuth } from '../../../hooks/useAuth'
 import {
+  CommentData,
   STATUS_MAP,
+  useAllComments,
   useAllReports,
+  useHideComment,
+  useUnhideComment,
   useUpdateStatus,
 } from '../../../hooks/useReport'
+import { useAuth } from '../../../hooks/useAuth'
 import { decryptData } from '../../../utils/crypto'
 
 interface ReportDetail {
@@ -18,6 +20,164 @@ interface ReportDetail {
   target?: string
   content?: string
   category?: string
+}
+
+// 댓글 관리 컴포넌트
+function AdminCommentSection({ reportId }: { reportId: bigint }) {
+  const { comments, isLoading, refetch } = useAllComments(reportId)
+  const {
+    hideComment,
+    isPending: isHidePending,
+    isSuccess: isHideSuccess,
+  } = useHideComment()
+  const {
+    unhideComment,
+    isPending: isUnhidePending,
+    isSuccess: isUnhideSuccess,
+  } = useUnhideComment()
+
+  useEffect(() => {
+    if (isHideSuccess || isUnhideSuccess) setTimeout(() => refetch(), 2000)
+  }, [isHideSuccess, isUnhideSuccess])
+
+  if (isLoading)
+    return (
+      <div style={{ fontSize: '13px', color: '#94A3B8' }}>
+        댓글 불러오는 중...
+      </div>
+    )
+  if (comments.length === 0)
+    return (
+      <div style={{ fontSize: '13px', color: '#94A3B8' }}>댓글이 없습니다</div>
+    )
+
+  return (
+    <div style={{ marginTop: '16px' }}>
+      <div
+        style={{
+          fontSize: '13px',
+          fontWeight: 600,
+          color: '#475569',
+          marginBottom: '12px',
+        }}
+      >
+        💬 댓글 관리 ({comments.length}개)
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {comments.map((comment: CommentData, i: number) => (
+          <div
+            key={i}
+            style={{
+              background: comment.hidden ? '#FEF2F2' : '#F8FAFC',
+              borderRadius: '8px',
+              padding: '10px 12px',
+              border: `1px solid ${comment.hidden ? '#FCA5A5' : '#E2E8F0'}`,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              opacity: comment.hidden ? 0.7 : 1,
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '8px',
+                  marginBottom: '4px',
+                  alignItems: 'center',
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: '11px',
+                    color: '#7C3AED',
+                    fontFamily: 'monospace',
+                  }}
+                >
+                  {comment.author.slice(0, 6)}...{comment.author.slice(-4)}
+                </span>
+                <span style={{ fontSize: '11px', color: '#94A3B8' }}>
+                  {new Date(
+                    Number(comment.timestamp) * 1000,
+                  ).toLocaleDateString('ko-KR')}
+                </span>
+                {comment.hidden && (
+                  <span
+                    style={{
+                      fontSize: '10px',
+                      background: '#FEF2F2',
+                      color: '#DC2626',
+                      border: '1px solid #FCA5A5',
+                      borderRadius: '4px',
+                      padding: '1px 6px',
+                    }}
+                  >
+                    숨김처리됨
+                  </span>
+                )}
+              </div>
+              <div
+                style={{
+                  fontSize: '13px',
+                  color: comment.hidden ? '#94A3B8' : '#334155',
+                  textDecoration: comment.hidden ? 'line-through' : 'none',
+                }}
+              >
+                {comment.content}
+              </div>
+            </div>
+            <div style={{ marginLeft: '8px', flexShrink: 0 }}>
+              {comment.hidden ? (
+                <button
+                  onClick={() => unhideComment(reportId, i)}
+                  disabled={isUnhidePending}
+                  style={{
+                    padding: '4px 10px',
+                    background: '#ECFDF5',
+                    color: '#059669',
+                    border: '1px solid #6EE7B7',
+                    borderRadius: '6px',
+                    fontSize: '11px',
+                    cursor: isUnhidePending ? 'not-allowed' : 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  복구
+                </button>
+              ) : (
+                <button
+                  onClick={() => hideComment(reportId, i)}
+                  disabled={isHidePending}
+                  style={{
+                    padding: '4px 10px',
+                    background: '#FEF2F2',
+                    color: '#DC2626',
+                    border: '1px solid #FCA5A5',
+                    borderRadius: '6px',
+                    fontSize: '11px',
+                    cursor: isHidePending ? 'not-allowed' : 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  숨김
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+      {isHideSuccess && (
+        <p style={{ fontSize: '12px', color: '#DC2626', marginTop: '8px' }}>
+          ✅ 댓글이 숨겨졌습니다!
+        </p>
+      )}
+      {isUnhideSuccess && (
+        <p style={{ fontSize: '12px', color: '#059669', marginTop: '8px' }}>
+          ✅ 댓글이 복구되었습니다!
+        </p>
+      )}
+    </div>
+  )
 }
 
 export default function AdminPage() {
@@ -105,9 +265,7 @@ export default function AdminPage() {
     if (detailMap[id] !== undefined) return
     setLoadingId(id)
     try {
-      const res = await axios.get(
-        `https://gateway.pinata.cloud/ipfs/${ipfsHash}`,
-      )
+      const res = await axios.get(`/api/ipfs?hash=${ipfsHash}`)
       const encrypted = res.data?.encrypted
       if (encrypted) {
         const decrypted = decryptData(encrypted) as ReportDetail
@@ -391,7 +549,7 @@ export default function AdminPage() {
                               <option value="접수">접수</option>
                               <option value="검토중">검토중</option>
                               <option value="처리완료">처리완료</option>
-                              <option value="반려">반려</option>
+                              <option value="비공개">비공개</option>
                             </select>
                           ) : (
                             <span
@@ -473,7 +631,7 @@ export default function AdminPage() {
                                         marginBottom: '4px',
                                       }}
                                     >
-                                      신고 대상
+                                      대상
                                     </div>
                                     <div
                                       style={{
@@ -508,6 +666,8 @@ export default function AdminPage() {
                                     </div>
                                   </div>
                                 )}
+                                {/* 댓글 관리 섹션 */}
+                                <AdminCommentSection reportId={report.id} />
                               </div>
                             ) : null}
                           </td>
